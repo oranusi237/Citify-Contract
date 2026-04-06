@@ -3,6 +3,7 @@ const { readFileSync, statSync } = require('node:fs')
 const { resolve } = require('node:path')
 
 const MAX_SCAN_BYTES = 1024 * 1024
+const SCAN_EXCLUDE_FILES = new Set(['scripts/check-secrets.cjs'])
 
 const riskyPatterns = [
   {
@@ -65,6 +66,10 @@ const criticalTrackedFiles = trackedFiles.filter(
 const findings = []
 
 for (const filePath of trackedFiles) {
+  if (SCAN_EXCLUDE_FILES.has(filePath)) {
+    continue
+  }
+
   const matches = findMatches(filePath)
   if (matches.length > 0) {
     findings.push({ filePath, matches })
