@@ -12,3 +12,9 @@
 *{
     font-family: Outfit;
 }
+
+.react-datepicker__day.inspection-day-disabled {
+    color: #94a3b8;
+    background-color: #f8fafc;
+    pointer-events: none;
+}

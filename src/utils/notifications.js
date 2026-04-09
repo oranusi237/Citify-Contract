@@ -55,6 +55,8 @@ export const sendContactEmailNotification = async (contact) => {
   const templateParams = {
     name: contact.name,
     email: contact.email,
+    mobile: contact.mobile || '',
+    subject: contact.subject || 'General enquiry',
     message: contact.message,
     source: contact.source || 'website',
     request_id: contact.id,

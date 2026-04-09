@@ -3,14 +3,17 @@ import { useParams, Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import LazyImage from '../components/LazyImage'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { seedProjectsIfEmpty, subscribeToProjects } from '../utils/projectsStore'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { seedProjectsIfEmpty, subscribeToProjectById } from '../utils/projectsStore'
+import { subscribeToPublishedBlogPosts } from '../features/blog/blogStore'
 import { createTourRequest } from '../utils/toursStore'
 import { getListingTypeConfig } from '../utils/listingTypes'
-import { setDocumentSeo } from '../utils/seo'
-import { COMPANY } from '../utils/siteConfig'
+import { setDocumentSeo } from '../shared/lib/seo'
+import { COMPANY } from '../shared/config/siteConfig'
 
 const inspectionTimeSlots = Array.from({ length: 13 }, (_, idx) => {
   const totalMinutes = 10 * 60 + (idx * 30)
@@ -43,9 +46,45 @@ const getStatusBadgeClass = (status, featured) => {
   return 'border-brand/25 bg-brand/10 text-brand'
 }
 
+const toLocalIsoDate = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const toDateFromIso = (isoDate) => {
+  if (!isoDate) return null
+  const parsed = new Date(`${isoDate}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const isWorkingDay = (date) => {
+  const day = date.getDay()
+  return day !== 0 && day !== 6
+}
+
+const toSearchTokens = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 2)
+
+const formatBlogDate = (value) => {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return 'Recently published'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed)
+}
+
 const ProjectDetail = () => {
   const { id } = useParams()
-  const [projects, setProjects] = useState([])
+  const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState('')
   const [tourForm, setTourForm] = useState({
@@ -61,31 +100,43 @@ const ProjectDetail = () => {
   const [tourSubmitting, setTourSubmitting] = useState(false)
   const [tourError, setTourError] = useState('')
   const [tourFieldErrors, setTourFieldErrors] = useState({})
+  const [relatedPosts, setRelatedPosts] = useState([])
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false)
 
   useEffect(() => {
+    if (!id) {
+      setProject(null)
+      setLoading(false)
+      return () => {}
+    }
+
     let unsubscribe = () => {}
 
     const init = async () => {
-      try {
-        await seedProjectsIfEmpty()
-        unsubscribe = subscribeToProjects(
-          (data) => {
-            setProjects(data)
-            setLoading(false)
-          },
-          () => {
-            setLoading(false)
-          }
-        )
-      } catch {
-        setLoading(false)
-      }
+      await seedProjectsIfEmpty()
+      unsubscribe = subscribeToProjectById(
+        id,
+        (data) => {
+          setProject(data)
+          setLoading(false)
+        },
+        () => {
+          setProject(null)
+          setLoading(false)
+        }
+      )
     }
 
-    init()
+    try {
+      setLoading(true)
+      init()
+    } catch {
+        setLoading(false)
+      setProject(null)
+    }
+
     return () => unsubscribe()
-  }, [])
+  }, [id])
 
   useEffect(() => {
     const onOffline = () => setIsOffline(true)
@@ -98,7 +149,6 @@ const ProjectDetail = () => {
     }
   }, [])
 
-  const project = projects.find((p) => p.id === id)
   const galleryImages =
     Array.isArray(project?.images) && project.images.length > 0
       ? project.images
@@ -115,6 +165,8 @@ const ProjectDetail = () => {
     ? 'bg-brand/10 text-brand border-brand/20'
     : 'bg-slate-100 text-slate-600 border-slate-200'
   const isLandListing = project?.listingType === 'land'
+  const selectedTourDate = toDateFromIso(tourForm.date)
+  const todayDate = new Date()
   const hasMultipleLandPlots = project?.listingType === 'land' && project?.landPlotMode === 'multiple' && Array.isArray(project?.plotOptions) && project.plotOptions.length > 0
   const sortedLandPlotOptions = hasMultipleLandPlots
     ? [...project.plotOptions].sort((a, b) => {
@@ -166,6 +218,58 @@ const ProjectDetail = () => {
     })
   }, [project, primaryGalleryImage])
 
+  useEffect(() => {
+    const unsubscribe = subscribeToPublishedBlogPosts(
+      (posts) => {
+        if (!project) {
+          setRelatedPosts([])
+          return
+        }
+
+        const projectTokens = [
+          ...toSearchTokens(project.listingType),
+          ...toSearchTokens(project.location),
+          ...toSearchTokens(project.title),
+        ]
+
+        const scoredPosts = posts
+          .map((post) => {
+            const postTags = (post.tags || []).map(tag => tag.toLowerCase())
+            const titleExcerpt = `${post.title || ''} ${post.excerpt || ''}`.toLowerCase()
+            
+            // Tag matches weighted 5x higher than text matches
+            const tagScore = projectTokens.reduce((acc, token) => {
+              if (!token || !postTags.some(tag => tag.includes(token))) return acc
+              return acc + 5
+            }, 0)
+            
+            const textScore = projectTokens.reduce((acc, token) => {
+              if (!token || !titleExcerpt.includes(token)) return acc
+              return acc + 1
+            }, 0)
+            
+            const score = tagScore + textScore
+
+            return {
+              ...post,
+              _score: score,
+            }
+          })
+          .sort((a, b) => b._score - a._score)
+
+        const prioritized = scoredPosts.filter((post) => post._score > 0)
+        const fallback = scoredPosts.filter((post) => post._score === 0)
+        const nextPosts = [...prioritized, ...fallback].slice(0, 3)
+        setRelatedPosts(nextPosts)
+      },
+      () => {
+        setRelatedPosts([])
+      }
+    )
+
+    return () => unsubscribe()
+  }, [project])
+
   const updateTourField = (event) => {
     const { name, value } = event.target
     setTourForm((prev) => ({ ...prev, [name]: value }))
@@ -181,7 +285,7 @@ const ProjectDetail = () => {
 
   const validateTourForm = () => {
     const errors = {}
-    const today = new Date().toISOString().split('T')[0]
+    const today = toLocalIsoDate(new Date())
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const phoneRegex = /^[+]?[(]?[0-9\s\-()]{7,20}$/
 
@@ -189,6 +293,11 @@ const ProjectDetail = () => {
       errors.date = 'Please select a date.'
     } else if (tourForm.date < today) {
       errors.date = 'Date cannot be in the past.'
+    } else {
+      const selectedDate = toDateFromIso(tourForm.date)
+      if (!selectedDate || !isWorkingDay(selectedDate)) {
+        errors.date = 'Inspections are available Monday to Friday only.'
+      }
     }
 
     if (!tourForm.time) {
@@ -268,7 +377,14 @@ const ProjectDetail = () => {
         email: '',
         message: '',
       })
-    } catch {
+    } catch (error) {
+      if (error?.code === 'permission-denied') {
+        const bookedMessage = 'That date and time slot is already booked. Please choose another slot.'
+        setTourError(bookedMessage)
+        toast.error(bookedMessage)
+        return
+      }
+
       if (!navigator.onLine) {
         setTourError("You're offline.")
         toast.error("You're offline.")
@@ -348,12 +464,22 @@ const ProjectDetail = () => {
             )}
 
             <div className='order-1 md:order-2 rounded-3xl overflow-hidden shadow-lg bg-gray-100'>
-              <LazyImage
-                src={selectedImage || galleryImages[0] || project.image}
-                alt={project.title}
-                className='w-full h-72 sm:h-96 md:h-115 lg:h-130 object-contain rounded-3xl bg-gray-100'
-                skeletonClass='w-full h-72 sm:h-96 md:h-115 lg:h-130 rounded-3xl bg-gray-100'
-              />
+              <AnimatePresence mode='wait'>
+                <motion.div
+                  key={selectedImage || 'default'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <LazyImage
+                    src={selectedImage || galleryImages[0] || project.image}
+                    alt={project.title}
+                    className='w-full h-72 sm:h-96 md:h-115 lg:h-130 object-contain rounded-3xl bg-gray-100'
+                    skeletonClass='w-full h-72 sm:h-96 md:h-115 lg:h-130 rounded-3xl bg-gray-100'
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </motion.div>
@@ -517,14 +643,18 @@ const ProjectDetail = () => {
                 </div>
                 <div>
                   <label className='text-sm font-medium text-gray-700 mb-1 block'>Date</label>
-                  <input
-                    type='date'
-                    name='date'
-                    value={tourForm.date}
-                    onChange={updateTourField}
-                    min={new Date().toISOString().split('T')[0]}
-                    onFocus={(event) => event.currentTarget.showPicker?.()}
-                    onClick={(event) => event.currentTarget.showPicker?.()}
+                  <DatePicker
+                    selected={selectedTourDate}
+                    onChange={(date) => {
+                      const nextDate = date ? toLocalIsoDate(date) : ''
+                      setTourForm((prev) => ({ ...prev, date: nextDate }))
+                      setTourFieldErrors((prev) => ({ ...prev, date: '' }))
+                    }}
+                    minDate={todayDate}
+                    filterDate={isWorkingDay}
+                    dateFormat='yyyy-MM-dd'
+                    placeholderText='Inspection date'
+                    dayClassName={(date) => (!isWorkingDay(date) ? 'inspection-day-disabled' : '')}
                     className='w-full rounded-lg border border-gray-300 bg-white px-4 py-2'
                     required
                   />
@@ -618,6 +748,38 @@ const ProjectDetail = () => {
               </div>
             </form>
           </div>
+
+          {relatedPosts.length > 0 && (
+            <div className='mt-12 rounded-2xl border border-slate-200 bg-white p-6 md:p-8'>
+              <div className='mb-5 flex flex-wrap items-end justify-between gap-3'>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-[0.16em] text-brand'>Insights</p>
+                  <h2 className='mt-2 text-2xl font-bold text-gray-900'>Related Guides</h2>
+                  <p className='mt-1 text-sm text-slate-600'>Helpful reads for this property type and location.</p>
+                </div>
+                <Link to='/blog' className='text-sm font-semibold text-brand hover:text-brand-strong'>View all articles</Link>
+              </div>
+
+              <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+                {relatedPosts.map((post) => (
+                  <Link
+                    key={post.id}
+                    to={`/blog/${post.slug}`}
+                    className='group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md'
+                  >
+                    {post.coverImage && (
+                      <img src={post.coverImage} alt={post.title} className='h-36 w-full object-cover' loading='lazy' />
+                    )}
+                    <div className='p-4'>
+                      <p className='text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500'>{formatBlogDate(post.publishedAt)}</p>
+                      <h3 className='mt-2 text-sm font-semibold text-slate-900 group-hover:text-brand'>{post.title}</h3>
+                      {post.excerpt && <p className='mt-2 text-xs text-slate-600 line-clamp-3'>{post.excerpt}</p>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
       <Footer />

@@ -10,25 +10,42 @@ export const AuthProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
+    let isMounted = true
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!isMounted) return
+
+      setAuthLoading(true)
       setUser(firebaseUser ?? null)
 
       if (!firebaseUser) {
-        setIsAdmin(false)
-        setAuthLoading(false)
+        if (isMounted) {
+          setIsAdmin(false)
+          setAuthLoading(false)
+        }
         return
       }
 
       try {
         const tokenResult = await getIdTokenResult(firebaseUser, true)
-        setIsAdmin(tokenResult.claims?.admin === true)
+        if (isMounted) {
+          setIsAdmin(tokenResult.claims?.admin === true)
+        }
       } catch {
-        setIsAdmin(false)
+        if (isMounted) {
+          setIsAdmin(false)
+        }
       } finally {
-        setAuthLoading(false)
+        if (isMounted) {
+          setAuthLoading(false)
+        }
       }
     })
-    return unsubscribe
+
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
   }, [])
 
   return (

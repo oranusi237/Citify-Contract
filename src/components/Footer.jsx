@@ -3,8 +3,8 @@ import { assets } from '../assets'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaTwitter } from 'react-icons/fa'
-import { makeFadeUp, makeStaggerContainer, useMotionSettings, viewportOnce } from '../utils/motion'
-import { COMPANY, SOCIAL_LINKS } from '../utils/siteConfig'
+import { makeFadeUp, makeStaggerContainer, useMotionSettings, viewportOnce } from '../shared/lib/motion'
+import { COMPANY, SOCIAL_LINKS } from '../shared/config/siteConfig'
 
 const Footer = () => {
   const motionSettings = useMotionSettings()
@@ -40,8 +40,9 @@ const Footer = () => {
             <ul className='space-y-2 text-sm'>
               <li><Link to='/' className='hover:text-white transition-colors'>Home</Link></li>
               <li><Link to='/about' className='hover:text-white transition-colors'>About</Link></li>
-              <li><Link to='/events' className='hover:text-white transition-colors'>Events</Link></li>
               <li><Link to='/properties' className='hover:text-white transition-colors'>Properties</Link></li>
+              <li><Link to='/events' className='hover:text-white transition-colors'>Events</Link></li>
+              <li><Link to='/blog' className='hover:text-white transition-colors'>Blog</Link></li>
               <li><Link to='/contact' className='hover:text-white transition-colors'>Contact</Link></li>
             </ul>
           </motion.div>

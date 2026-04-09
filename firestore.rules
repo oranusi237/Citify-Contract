@@ -38,6 +38,14 @@ service cloud.firestore {
       return v in ['new', 'contacted', 'closed'];
     }
 
+    function validBlogStatus(v) {
+      return v in ['draft', 'published'];
+    }
+
+    function validEmail(v) {
+      return v.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+    }
+
     match /projects/{projectId} {
       // Public listing access
       allow read: if true;
@@ -64,13 +72,17 @@ service cloud.firestore {
 
       // Public inspection request create with payload checks
       allow create: if
+        tourId == request.resource.data.date + '_' + request.resource.data.time
+        &&
         isString(request.resource.data.projectId)
         && isString(request.resource.data.projectTitle)
         && isString(request.resource.data.projectLocation)
         && isString(request.resource.data.tourType)
         && validTourType(request.resource.data.tourType)
         && isString(request.resource.data.date)
+        && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && isString(request.resource.data.time)
+        && request.resource.data.time.matches('^\\d{2}:\\d{2}$')
         && isString(request.resource.data.name)
         && request.resource.data.name.size() >= 2
         && request.resource.data.name.size() <= 120
@@ -80,6 +92,7 @@ service cloud.firestore {
         && isString(request.resource.data.email)
         && request.resource.data.email.size() >= 5
         && request.resource.data.email.size() <= 254
+        && validEmail(request.resource.data.email)
         && isString(request.resource.data.message)
         && request.resource.data.message.size() <= 1000;
     }
@@ -95,7 +108,7 @@ service cloud.firestore {
 
       // Public contact request create with strict payload validation
       allow create: if
-        request.resource.data.keys().hasOnly(['name', 'email', 'message', 'source', 'status', 'createdAt'])
+        request.resource.data.keys().hasOnly(['name', 'email', 'subject', 'message', 'source', 'status', 'createdAt'])
         && request.resource.data.createdAt is timestamp
         && isString(request.resource.data.name)
         && request.resource.data.name.size() >= 2
@@ -103,6 +116,10 @@ service cloud.firestore {
         && isString(request.resource.data.email)
         && request.resource.data.email.size() >= 5
         && request.resource.data.email.size() <= 254
+        && validEmail(request.resource.data.email)
+        && isString(request.resource.data.subject)
+        && request.resource.data.subject.size() >= 3
+        && request.resource.data.subject.size() <= 120
         && isString(request.resource.data.message)
         && request.resource.data.message.size() >= 10
         && request.resource.data.message.size() <= 2000
@@ -111,6 +128,37 @@ service cloud.firestore {
         && request.resource.data.source.size() <= 60
         && isString(request.resource.data.status)
         && request.resource.data.status == 'new';
+    }
+
+    match /blog_posts/{postId} {
+      // Public can read only published posts
+      allow read: if isAdmin() || (resource.data.status == 'published');
+
+      // Admin-only blog management
+      allow create, update, delete: if isAdmin()
+        && isString(request.resource.data.id)
+        && isString(request.resource.data.title)
+        && request.resource.data.title.size() >= 5
+        && request.resource.data.title.size() <= 180
+        && isString(request.resource.data.slug)
+        && request.resource.data.slug.matches('^[a-z0-9]+(?:-[a-z0-9]+)*$')
+        && isString(request.resource.data.excerpt)
+        && request.resource.data.excerpt.size() >= 20
+        && request.resource.data.excerpt.size() <= 600
+        && isString(request.resource.data.content)
+        && request.resource.data.content.size() >= 120
+        && request.resource.data.content.size() <= 30000
+        && isString(request.resource.data.coverImage)
+        && request.resource.data.coverImage.size() <= 5000
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 20
+        && isString(request.resource.data.status)
+        && validBlogStatus(request.resource.data.status)
+        && isString(request.resource.data.author)
+        && request.resource.data.author.size() <= 120
+        && isString(request.resource.data.publishedAt)
+        && isString(request.resource.data.updatedAt)
+        && isString(request.resource.data.createdAt);
     }
 
     match /events/{eventId} {

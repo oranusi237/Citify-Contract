@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { setDocumentSeo } from '../utils/seo'
+import { setDocumentSeo } from '../shared/lib/seo'
 import { trackRouteView } from '../utils/observability'
-import { COMPANY } from '../utils/siteConfig'
+import { COMPANY } from '../shared/config/siteConfig'
 
 const routeMeta = (pathname) => {
   if (pathname === '/') {
@@ -33,6 +33,14 @@ const routeMeta = (pathname) => {
     return {
       title: 'Property Details',
       description: `View detailed property information and request an inspection with ${COMPANY.name}.`,
+      robots: 'index,follow',
+    }
+  }
+
+  if (pathname.startsWith('/blog')) {
+    return {
+      title: 'Blog and Market Insights',
+      description: `Explore buying guides and market insights from ${COMPANY.name}.`,
       robots: 'index,follow',
     }
   }

@@ -25,9 +25,9 @@ Citify Contractors is a Vite + React real estate web app with a public marketing
 
 The active application lives in [src](src).
 
-There is also a retained legacy nested app folder at [citify-contractors](citify-contractors). That nested tree is not the source of truth for new work. If you are onboarding into this repo, build new features and fixes in [src](src) unless there is a specific reason to touch the legacy folder.
+This repository now enforces a single-source structure. If a nested duplicate app folder appears, strict structure checks will fail.
 
-The structure check in [scripts/check-single-source.cjs](scripts/check-single-source.cjs) documents this explicitly.
+See [scripts/check-single-source.cjs](scripts/check-single-source.cjs).
 
 ## Getting Started
 
@@ -39,7 +39,7 @@ npm install
 
 ### 2. Create local environment variables
 
-Copy values into a local `.env` file using [ .env.example ](.env.example) as the template.
+Copy values into a local `.env` file using [.env.example](.env.example) as the template.
 
 Required client variables:
 
@@ -82,9 +82,10 @@ npm run build
 - `npm run test`: Run the Vitest suite once
 - `npm run test:watch`: Run Vitest in watch mode
 - `npm run check:secrets`: Scan tracked files for secret-like values
-- `npm run check:structure`: Warn when the legacy nested app folder is present
-- `npm run ci`: Run secrets check, structure check, tests, and build
-- `npm run ci:full`: Run secrets check, structure check, lint, tests, and build
+- `npm run check:structure`: Run structure check in warning mode
+- `npm run check:structure:strict`: Fail when duplicate nested app structure is detected
+- `npm run ci`: Run secrets check, strict structure check, tests, and build
+- `npm run ci:full`: Run secrets check, strict structure check, lint, tests, and build
 
 ## Firebase
 
@@ -144,7 +145,7 @@ npm run ci:full
 - Use [src/utils/siteConfig.js](src/utils/siteConfig.js) for business details instead of hardcoding company metadata in components.
 - Reuse [src/utils/useContactRequestForm.js](src/utils/useContactRequestForm.js) for future contact-style forms instead of duplicating validation and submission logic.
 - Reuse [src/components/SitePageLayout.jsx](src/components/SitePageLayout.jsx) for standard public pages that need Navbar plus content plus Footer.
-- Treat the nested [citify-contractors](citify-contractors) folder as legacy unless explicitly told otherwise.
+- Keep all application changes inside [src](src) and avoid creating nested duplicate app roots.
 
 ## Deployment Notes
 

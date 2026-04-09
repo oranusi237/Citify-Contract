@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import SitePageLayout from '../components/SitePageLayout'
-import { COMPANY, PRIVACY_POLICY_EFFECTIVE_DATE } from '../utils/siteConfig'
+import SitePageLayout from '../shared/components/SitePageLayout'
+import { COMPANY, PRIVACY_POLICY_EFFECTIVE_DATE } from '../shared/config/siteConfig'
 
 const Section = ({ title, children }) => (
   <section className='mb-10'>

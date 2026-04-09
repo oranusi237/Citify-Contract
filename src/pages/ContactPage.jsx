@@ -1,6 +1,6 @@
 import React from 'react'
 import Contact from '../components/Contact'
-import SitePageLayout from '../components/SitePageLayout'
+import SitePageLayout from '../shared/components/SitePageLayout'
 
 const ContactPage = () => {
   return (

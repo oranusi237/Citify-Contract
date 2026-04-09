@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUpRight, Camera, MapPin, Search, X } from 'lucide-react'
-import LazyImage from './LazyImage'
-import { seedProjectsIfEmpty, subscribeToProjects } from '../utils/projectsStore'
-import { makeFadeUp, makeStaggerContainer, useMotionSettings, viewportOnce } from '../utils/motion'
-import { getListingTypeConfig } from '../utils/listingTypes'
+import LazyImage from '../shared/components/LazyImage'
+import { seedProjectsIfEmpty, subscribeToProjects } from '../features/projects/projectsStore'
+import { makeFadeUp, makeStaggerContainer, useMotionSettings, viewportOnce } from '../shared/lib/motion'
+import { getListingTypeConfig } from '../features/projects/listingTypes'
 
 const Projects = () => {
   const [projects, setProjects] = useState([])
@@ -14,7 +14,7 @@ const Projects = () => {
   const [selectedType, setSelectedType] = useState('all')
   const motionSettings = useMotionSettings()
   const fadeUp = makeFadeUp(motionSettings)
-  const staggerContainer = makeStaggerContainer(motionSettings)
+  makeStaggerContainer(motionSettings)
 
   const getImages = (project) =>
     Array.isArray(project.images) && project.images.length > 0
@@ -136,16 +136,12 @@ const Projects = () => {
         </div>
       </motion.div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial='hidden'
-        animate='visible'
-        className='mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 items-stretch'
-      >
+      <div className='mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 items-stretch'>
         {loading && (
           <div className='col-span-full rounded-[1.75rem] border border-dashed border-brand/30 bg-brand/5 px-6 py-14 text-center text-slate-500'>Loading properties...</div>
         )}
 
+        <AnimatePresence mode='popLayout'>
         {!loading && filteredProjects.map((project) => {
           const images = getImages(project)
           const mainImage = images[0] || project.image
@@ -165,7 +161,14 @@ const Projects = () => {
             : 0
 
           return (
-            <motion.div key={project.id} variants={fadeUp}>
+            <motion.div
+              key={project.id}
+              layout
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
               <Link
                 to={`/property/${project.id}`}
                 className='group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(15,23,42,0.12)]'
@@ -257,6 +260,7 @@ const Projects = () => {
             </motion.div>
           )
         })}
+        </AnimatePresence>
 
         {!loading && filteredProjects.length === 0 && (
           <div className='col-span-full rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center'>
@@ -265,7 +269,7 @@ const Projects = () => {
             <p className='mt-2 text-slate-500'>Try another keyword or set location back to All locations.</p>
           </div>
         )}
-      </motion.div>
+      </div>
     </motion.div>
   )
 }

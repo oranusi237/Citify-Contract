@@ -2,9 +2,9 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaTwitter } from 'react-icons/fa'
-import { makeFadeUp, makeStaggerContainer, useMotionSettings, viewportOnce } from '../utils/motion'
-import { COMPANY, SOCIAL_LINKS } from '../utils/siteConfig'
-import { useContactRequestForm } from '../utils/useContactRequestForm'
+import { makeFadeUp, makeStaggerContainer, useMotionSettings, viewportOnce } from '../shared/lib/motion'
+import { COMPANY, SOCIAL_LINKS } from '../shared/config/siteConfig'
+import { useContactRequestForm } from '../features/contacts/hooks/useContactRequestForm'
 
 const Contact = () => {
   const motionSettings = useMotionSettings()
@@ -108,6 +108,37 @@ const Contact = () => {
                     autoComplete='email'
                     placeholder='Your Email'
                     required
+                  />
+                </div>
+              </div>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-5'>
+                <div>
+                  <label className='text-sm font-medium text-slate-700'>Subject</label>
+                  <select
+                    className='w-full border border-slate-300 rounded-xl py-3 px-4 mt-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                    name='Subject'
+                    aria-label='Subject'
+                    required
+                    defaultValue=''
+                  >
+                    <option value='' disabled>Select a subject</option>
+                    <option value='General Enquiry'>General Enquiry</option>
+                    <option value='Property Purchase'>Property Purchase</option>
+                    <option value='Inspection Request'>Inspection Request</option>
+                    <option value='Support Request'>Support Request</option>
+                    <option value='Partnership'>Partnership</option>
+                  </select>
+                </div>
+                <div>
+                  <label className='text-sm font-medium text-slate-700'>Mobile Number</label>
+                  <input
+                    className='w-full border border-slate-300 rounded-xl py-3 px-4 mt-2 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                    type='tel'
+                    name='Mobile'
+                    aria-label='Mobile Number'
+                    autoComplete='tel'
+                    placeholder='Mobile'
                   />
                 </div>
               </div>

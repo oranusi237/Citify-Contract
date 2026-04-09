@@ -3,10 +3,17 @@ import { useEffect, useState } from 'react'
 const buildInitialValues = (items) => Object.fromEntries(items.map(({ key }) => [key, 0]))
 
 export const useAnimatedStats = (items, options = {}) => {
-  const { duration = 1200, intervalMs = 30 } = options
+  const { duration = 1200, intervalMs = 30, shouldAnimate = true } = options
   const [values, setValues] = useState(() => buildInitialValues(items))
 
   useEffect(() => {
+    let mounted = true
+
+    if (!shouldAnimate) {
+      setValues(buildInitialValues(items))
+      return () => { mounted = false }
+    }
+
     const steps = Math.ceil(duration / intervalMs)
     setValues(buildInitialValues(items))
 
@@ -15,6 +22,8 @@ export const useAnimatedStats = (items, options = {}) => {
       const step = Math.ceil(value / steps)
 
       const timer = setInterval(() => {
+        if (!mounted) return
+
         count += step
 
         if (count >= value) {
@@ -30,9 +39,10 @@ export const useAnimatedStats = (items, options = {}) => {
     })
 
     return () => {
+      mounted = false
       timers.forEach(clearInterval)
     }
-  }, [duration, intervalMs, items])
+  }, [duration, intervalMs, items, shouldAnimate])
 
   return values
 }
